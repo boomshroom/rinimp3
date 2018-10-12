@@ -57,22 +57,25 @@ const G_LINBITS: [u8; 32] = [
 ];
 
 pub(crate) fn l3_huffman(
-    mut dst: &mut [f32],
+    dst: &mut [f32],
     bs: &mut Bs,
     gr_info: &L3GrInfo,
-    mut scf: &[f32],
+    scf: &[f32],
     layer3gr_limit: i32,
 ) {
     let mut one: f32 = 0.0;
     let mut ireg: i32 = 0;
     let mut big_val_cnt = gr_info.big_values;
-    let mut sfb: &[u8] = (*gr_info).sfbtab;
+    let mut sfb = gr_info.sfbtab.iter().map(|&x| u16::from(x));
 
     let mut bs_cache: i32 = BE::read_i32(&bs.buf[(bs.pos as usize / 8)..]);
     let mut pairs_to_decode;
     let mut np;
     let mut bs_sh = (bs.pos & 7) as i32 - 8;
     let mut bs_next_ptr = &bs.buf[(bs.pos as usize / 8) + 4..];
+    let mut dst_idx = 0;
+
+    let mut scf = scf.iter().cloned();
     while big_val_cnt > 0 {
         let tab_num = gr_info.table_select[ireg as usize];
         let mut sfb_cnt = i32::from(
@@ -85,20 +88,14 @@ pub(crate) fn l3_huffman(
         let codebook: &[i16] = &TABS[TABINDEX[tab_num as usize] as usize..];
         let linbits = G_LINBITS[tab_num as usize];
         loop {
-            np = u16::from({
-                let _old = sfb;
-                // sfb = sfb.offset(1);
-                increment_by(&mut sfb, 1);
-                _old[0]
-            }) / 2;
+            np = sfb.next().unwrap() / 2;
             pairs_to_decode = if big_val_cnt > np { np } else { big_val_cnt };
             // one = *{
             //     let _old = scf;
             //     scf = scf.offset(1);
             //     _old
             // };
-            one = scf[0];
-            increment_by(&mut scf, 1);
+            one = scf.next().unwrap();
             for _ in 0..pairs_to_decode {
                 let mut w: u8 = 5;
                 let mut leaf = codebook[(bs_cache >> (32 - w)) as usize];
@@ -113,11 +110,11 @@ pub(crate) fn l3_huffman(
                         bs_cache <<= linbits;
                         bs_sh += i32::from(linbits);
                         fun1_obf(&mut bs_sh, &mut bs_cache, &mut bs_next_ptr);
-                        dst[0] = one
+                        dst[dst_idx] = one
                             * l3_pow_43(i32::from(lsb))
                             * if bs_cache < 0 { -1 } else { 1 } as f32;
                     } else {
-                        dst[0] =
+                        dst[dst_idx] =
                             GPOW43[(16 + lsb)
                                        .wrapping_sub(16_i16.wrapping_mul((bs_cache >> 31) as i16))
                                        as usize]
@@ -128,7 +125,7 @@ pub(crate) fn l3_huffman(
                         bs_sh += 1;
                     }
                     // dst = dst.offset(1);
-                    increment_by_mut(&mut dst, 1);
+                    dst_idx += 1;
                     leaf >>= 4;
                 }
                 fun1_obf(&mut bs_sh, &mut bs_cache, &mut bs_next_ptr);
@@ -147,7 +144,7 @@ pub(crate) fn l3_huffman(
         }
     }
     np = 1 - big_val_cnt;
-    loop {
+    for dst in dst[dst_idx..].chunks_mut(4) {
         let codebook_count1: &[u8] = match gr_info.count1_table {
             0 => &TAB32,
             _ => &TAB33,
@@ -174,11 +171,7 @@ pub(crate) fn l3_huffman(
             np
         } == 0
         {
-            np = u16::from({
-                let _old = sfb[0];
-                increment_by(&mut sfb, 1);
-                _old
-            }) / 2;
+            np = sfb.next().unwrap() / 2;
             if np == 0 {
                 break;
             }
@@ -187,8 +180,7 @@ pub(crate) fn l3_huffman(
             //     scf = scf.offset(1);
             //     _old
             // };
-            one = scf[0];
-            increment_by(&mut scf, 1);
+            one = scf.next().unwrap();
         }
         if leaf & 0x80 != 0 {
             dst[0] = match_sign(&bs_cache, one);
@@ -205,11 +197,7 @@ pub(crate) fn l3_huffman(
             np
         } == 0
         {
-            np = u16::from({
-                let _old = sfb[0];
-                increment_by(&mut sfb, 1);
-                _old
-            }) / 2;
+            np = sfb.next().unwrap() / 2;
             if np == 0 {
                 break;
             }
@@ -218,8 +206,7 @@ pub(crate) fn l3_huffman(
             //     scf = scf.offset(1);
             //     _old
             // };
-            one = scf[0];
-            increment_by(&mut scf, 1);
+            one = scf.next().unwrap();
         }
         if leaf & 0x20 != 0 {
             dst[2] = match_sign(&bs_cache, one);
@@ -233,7 +220,6 @@ pub(crate) fn l3_huffman(
         }
         fun1_obf(&mut bs_sh, &mut bs_cache, &mut bs_next_ptr);
         // dst = dst.offset(4);
-        increment_by_mut(&mut dst, 4);
     }
     (*bs).pos = layer3gr_limit;
 }

@@ -540,112 +540,112 @@ fn main() {
     }
 
     /*
-    let mut i: i32;
-    let data_bytes: i32;
-    let mut total_samples: i32 = 0i32;
-    let mut maxdiff: i32 = 0i32;
-    let mut mse: f64 = 0.0f64;
-    let psnr: f64;
-    let mut info: Mp3decFileInfo = ::std::mem::zeroed();
-    unsafe fn callback(
-        _: *mut ::std::os::raw::c_void,
-        _: usize,
-        _: usize,
-        _: *mut FrameInfo,
-    ) -> i32 {
-        0
-    };
-    if mp3dec_load(
-        &mut mp3d as (*mut Mp3Dec),
-        input_file_name,
-        &mut info as (*mut Mp3decFileInfo),
-        callback,
-        0i32 as (*mut ::std::os::raw::c_void),
-    ) != 0
-    {
-        printf((*b"error: file not found or read error\0").as_ptr());
-        exit(1i32);
-    }
-    let buffer: *mut i16 = info.buffer;
-    if wave_out != 0 && !file_out.is_null() {
-        fwrite(
-            wav_header(0i32, 0i32, 0i32, 0i32).as_ptr() as (*const ::std::os::raw::c_void),
-            1usize,
-            44usize,
-            file_out,
-        );
-    }
-    if info.samples != 0 {
-        total_samples = (total_samples as (usize)).wrapping_add(info.samples) as (i32);
-        if !buf_ref.is_null() {
-            let max_samples: i32 = (if (ref_size as (usize)).wrapping_div(2usize) > info.samples {
-                info.samples
-            } else {
-                (ref_size as (usize)).wrapping_div(2usize)
-            }) as (i32);
-            i = 0i32;
-            'loop7: loop {
-                if !(i < max_samples) {
-                    break;
-                }
-                let mse_temp: i32 = abs(*buffer.offset(i as (isize)) as (i32)
-                    - read16le(
-                        &*buf_ref
-                            .offset((i as (usize)).wrapping_mul(::std::mem::size_of::<i16>())
-                                as (isize)) as (*const u8)
-                            as (*const ::std::os::raw::c_void),
-                    ) as (i32));
-                if mse_temp > maxdiff {
-                    maxdiff = mse_temp;
-                }
-                mse = mse + (mse_temp as (f32) * mse_temp as (f32)) as (f64);
-                i = i + 1;
-            }
+        let mut i: i32;
+        let data_bytes: i32;
+        let mut total_samples: i32 = 0i32;
+        let mut maxdiff: i32 = 0i32;
+        let mut mse: f64 = 0.0f64;
+        let psnr: f64;
+        let mut info: Mp3decFileInfo = ::std::mem::zeroed();
+        unsafe fn callback(
+            _: *mut ::std::os::raw::c_void,
+            _: usize,
+            _: usize,
+            _: *mut FrameInfo,
+        ) -> i32 {
+            0
+        };
+        if mp3dec_load(
+            &mut mp3d as (*mut Mp3Dec),
+            input_file_name,
+            &mut info as (*mut Mp3decFileInfo),
+            callback,
+            0i32 as (*mut ::std::os::raw::c_void),
+        ) != 0
+        {
+            printf((*b"error: file not found or read error\0").as_ptr());
+            exit(1i32);
         }
-        if !file_out.is_null() {
+        let buffer: *mut i16 = info.buffer;
+        if wave_out != 0 && !file_out.is_null() {
             fwrite(
-                buffer as (*const ::std::os::raw::c_void),
-                info.samples,
-                ::std::mem::size_of::<i16>(),
+                wav_header(0i32, 0i32, 0i32, 0i32).as_ptr() as (*const ::std::os::raw::c_void),
+                1usize,
+                44usize,
                 file_out,
             );
         }
-        free(buffer as (*mut ::std::os::raw::c_void));
-    }
-    mse = mse / if total_samples != 0 {
-        total_samples
-    } else {
-        1i32
-    } as (f64);
-    if 0i32 as (f64) == mse {
-        psnr = 99.0f64;
-    } else {
-        psnr = 10.0f64 * (0x7fffi32 as (f64) * 0x7fffi32 as (f64) / mse);
-    }
-    printf(
-        (*b"rate=%d samples=%d max_diff=%d PSNR=%f\n\0").as_ptr(),
-        info.hz,
-        total_samples,
-        maxdiff,
-        psnr,
-    );
-    if psnr < 96i32 as (f64) {
-        printf((*b"PSNR compliance failed\n\0").as_ptr());
-        exit(1i32);
-    }
-    if wave_out != 0 && !file_out.is_null() {
-        data_bytes = (ftell(file_out) - 44isize) as (i32);
-        rewind(file_out);
-        fwrite(
-            wav_header(info.hz, info.channels, 16i32, data_bytes).as_ptr()
-                as (*const ::std::os::raw::c_void),
-            1usize,
-            44usize,
-            file_out,
+        if info.samples != 0 {
+            total_samples = (total_samples as (usize)).wrapping_add(info.samples) as (i32);
+            if !buf_ref.is_null() {
+                let max_samples: i32 = (if (ref_size as (usize)).wrapping_div(2usize) > info.samples {
+                    info.samples
+                } else {
+                    (ref_size as (usize)).wrapping_div(2usize)
+                }) as (i32);
+                i = 0i32;
+                'loop7: loop {
+                    if !(i < max_samples) {
+                        break;
+                    }
+                    let mse_temp: i32 = abs(*buffer.offset(i as (isize)) as (i32)
+                        - read16le(
+                            &*buf_ref
+                                .offset((i as (usize)).wrapping_mul(::std::mem::size_of::<i16>())
+                                    as (isize)) as (*const u8)
+                                as (*const ::std::os::raw::c_void),
+                        ) as (i32));
+                    if mse_temp > maxdiff {
+                        maxdiff = mse_temp;
+                    }
+                    mse = mse + (mse_temp as (f32) * mse_temp as (f32)) as (f64);
+                    i = i + 1;
+                }
+            }
+            if !file_out.is_null() {
+                fwrite(
+                    buffer as (*const ::std::os::raw::c_void),
+                    info.samples,
+                    ::std::mem::size_of::<i16>(),
+                    file_out,
+                );
+            }
+            free(buffer as (*mut ::std::os::raw::c_void));
+        }
+        mse = mse / if total_samples != 0 {
+            total_samples
+        } else {
+            1i32
+        } as (f64);
+        if 0i32 as (f64) == mse {
+            psnr = 99.0f64;
+        } else {
+            psnr = 10.0f64 * (0x7fffi32 as (f64) * 0x7fffi32 as (f64) / mse);
+        }
+        printf(
+            (*b"rate=%d samples=%d max_diff=%d PSNR=%f\n\0").as_ptr(),
+            info.hz,
+            total_samples,
+            maxdiff,
+            psnr,
         );
-    }
-
-*/
+        if psnr < 96i32 as (f64) {
+            printf((*b"PSNR compliance failed\n\0").as_ptr());
+            exit(1i32);
+        }
+        if wave_out != 0 && !file_out.is_null() {
+            data_bytes = (ftell(file_out) - 44isize) as (i32);
+            rewind(file_out);
+            fwrite(
+                wav_header(info.hz, info.channels, 16i32, data_bytes).as_ptr()
+                    as (*const ::std::os::raw::c_void),
+                1usize,
+                44usize,
+                file_out,
+            );
+        }
+    
+    */
 
     return;
     /*

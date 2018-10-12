@@ -3,30 +3,6 @@ use minimp3;
 //extern crate minimp3;
 
 #[test]
-fn test_increment_by_mut() {
-    let slice: Vec<i32> = vec![1, 2, 3, 4, 5, 6];
-    let mut slice_to_mongle: &mut [i32] = &mut slice.clone();
-    increment_by_mut(&mut slice_to_mongle, 1);
-    assert_eq!(&slice[1..], slice_to_mongle);
-    increment_by_mut(&mut slice_to_mongle, 1);
-    assert_eq!(&slice[2..], slice_to_mongle);
-    increment_by_mut(&mut slice_to_mongle, 2);
-    assert_eq!(&slice[4..], slice_to_mongle);
-    increment_by_mut(&mut slice_to_mongle, 2);
-    let empty: &[i32] = &[];
-    assert_eq!(empty, slice_to_mongle);
-    assert_eq!(&slice[6..], slice_to_mongle);
-}
-
-#[test]
-#[should_panic]
-fn test_increment_too_far() {
-    let slice: Vec<i32> = vec![1, 2, 3, 4, 5, 6];
-    let mut slice_to_mongle: &mut [i32] = &mut slice.clone();
-    increment_by_mut(&mut slice_to_mongle, 99);
-}
-
-#[test]
 fn test_rewritten_get_bits() {
     unsafe fn get_bits_corroded(bs: &mut Bs, n: i32) -> u32 {
         let mut next: u32;
