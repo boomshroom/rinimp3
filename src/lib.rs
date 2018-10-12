@@ -606,9 +606,9 @@ pub fn mp3d_find_frame(
             *free_format_bytes = 0;
         }
         mp3 = &mp3[1..];
-    }
+    };
     *ptr_frame_bytes = 0;
-    mp3_bytes - 4
+    return (mp3_bytes - 4).max(0);
 }
 
 /// Rewritten by hand; original is on
@@ -2556,6 +2556,7 @@ pub fn mp3dec_decode_frame(
                         &mut sci.total_bands,
                         (*info).layer | 1,
                     );
+                    eprintln!("{:?}, {:?}", scratch.grbuf[0].len(), i);
                     i = i + l12_dequantize_granule(
                         &mut scratch.grbuf[0][i as usize..],
                         &mut bs_frame,
