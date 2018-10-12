@@ -544,10 +544,10 @@ pub fn hdr_frame_bytes(h: &[u8], free_format_size: i32) -> i32 {
 }
 
 pub fn hdr_padding(h: &[u8]) -> i32 {
-    match (test_bit(h[1], 1), test_bit(h[1], 2), test_bit(h[2], 1)) {
-        (true, true, true) => 1,
-        (_, _, true) => 4,
-        (_, _, _) => 0,
+    match (h[2] & 2, h[1] & 6){
+        (0, _) => 0,
+        (_, 6) => 4,
+        (_, _) => 1,
     }
 }
 
@@ -2556,7 +2556,6 @@ pub fn mp3dec_decode_frame(
                         &mut sci.total_bands,
                         (*info).layer | 1,
                     );
-                    eprintln!("{:?}, {:?}", scratch.grbuf[0].len(), i);
                     i = i + l12_dequantize_granule(
                         &mut scratch.grbuf[0][i as usize..],
                         &mut bs_frame,
