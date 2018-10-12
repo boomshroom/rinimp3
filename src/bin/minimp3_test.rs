@@ -80,10 +80,10 @@ unsafe fn mp3dec_skip_id3v2(buf: *const u8, buf_size: usize) -> usize {
             3usize,
         ) == 0)
     {
-        (((*buf.offset(6isize) as (i32) & 0x7fi32) << 21i32
-            | (*buf.offset(7isize) as (i32) & 0x7fi32) << 14i32
-            | (*buf.offset(8isize) as (i32) & 0x7fi32) << 7i32
-            | *buf.offset(9isize) as (i32) & 0x7fi32)
+        (((i32::from(*buf.offset(6isize)) & 0x7fi32) << 21i32
+            | (i32::from(*buf.offset(7isize)) & 0x7fi32) << 14i32
+            | (i32::from(*buf.offset(8isize)) & 0x7fi32) << 7i32
+            | i32::from(*buf.offset(9isize)) & 0x7fi32)
             + 10i32) as (usize)
     } else {
         0usize
@@ -113,11 +113,11 @@ pub unsafe fn mp3dec_load_buf(
     let id3v2size: usize = mp3dec_skip_id3v2(buf, buf_size);
     if id3v2size > buf_size {
     } else {
-        buf = buf.offset(id3v2size as (isize));
+        buf = buf.add(id3v2size);
         buf_size = buf_size.wrapping_sub(id3v2size);
         *dec = Mp3Dec::new();
         let mut samples: i32;
-        'loop2: loop {
+        loop {
             samples = mp3dec_decode_frame(
                 &mut *dec,
                 ::std::slice::from_raw_parts(buf, buf_size),
@@ -135,7 +135,7 @@ pub unsafe fn mp3dec_load_buf(
         }
         (if samples == 0 {
         } else {
-            samples = samples * frame_info.channels;
+            samples *= frame_info.channels;
             let mut allocated: usize = buf_size
                 .wrapping_div(frame_info.frame_bytes as (usize))
                 .wrapping_mul(samples as (usize))
@@ -158,7 +158,7 @@ pub unsafe fn mp3dec_load_buf(
                 let mut avg_bitrate_kbps: usize = frame_info.bitrate_kbps as (usize);
                 let mut frames: usize = 1usize;
                 let mut frame_bytes: i32;
-                'loop7: loop {
+                loop {
                     if allocated
                         .wrapping_sub((*info).samples.wrapping_mul(::std::mem::size_of::<i16>()))
                         < ((1152i32 * 2i32) as (usize)).wrapping_mul(::std::mem::size_of::<i16>())
@@ -174,7 +174,7 @@ pub unsafe fn mp3dec_load_buf(
                     // know the length though, it assumes the
                     // buffer is a fixed size.
                     let buffer_slice = ::std::slice::from_raw_parts_mut(
-                        (*info).buffer.offset((*info).samples as (isize)),
+                        (*info).buffer.add((*info).samples),
                         allocated,
                     );
                     samples = mp3dec_decode_frame(
@@ -239,9 +239,9 @@ pub unsafe fn mp3dec_iterate_buf(
     (if id3v2size > buf_size {
     } else {
         let orig_buf: *const u8 = buf;
-        buf = buf.offset(id3v2size as (isize));
+        buf = buf.add(id3v2size);
         buf_size = buf_size.wrapping_sub(id3v2size);
-        'loop3: loop {
+        loop {
             let mut free_format_bytes: i32 = 0i32;
             let mut frame_size: i32 = 0i32;
             let buf_slice = ::std::slice::from_raw_parts(buf, buf_size);
@@ -258,14 +258,14 @@ pub unsafe fn mp3dec_iterate_buf(
                     break;
                 }
                 let hdr: &[u8] = ::std::slice::from_raw_parts(buf, buf_size);
-                frame_info.channels = if hdr[3] as (i32) & 0xc0i32 == 0xc0i32 {
+                frame_info.channels = if i32::from(hdr[3]) & 0xc0i32 == 0xc0i32 {
                     1i32
                 } else {
                     2i32
                 };
                 frame_info.hz = hdr_sample_rate_hz(hdr) as (i32);
                 // TODO: Double-check precedence on this next line
-                frame_info.layer = 4i32 - hdr[1] as (i32) >> 1i32 & 3i32;
+                frame_info.layer = (4i32 - i32::from(hdr[1])) >> 1i32 & 3i32;
                 frame_info.bitrate_kbps = hdr_bitrate_kbps(hdr) as (i32);
                 frame_info.frame_bytes = frame_size;
                 if callback(
@@ -359,7 +359,7 @@ unsafe fn mp3dec_open_file(file_name: *const u8, map_info: *mut Mp3decMapInfo) -
         0i32,
         ::std::mem::size_of::<Mp3decMapInfo>(),
     );
-    'loop1: loop {
+    loop {
         file = open(file_name, 0o0i32);
         if !(file < 0i32 && (*__errno_location() == 11i32 || *__errno_location() == 4i32)) {
             break;
@@ -370,9 +370,9 @@ unsafe fn mp3dec_open_file(file_name: *const u8, map_info: *mut Mp3decMapInfo) -
         -1i32
     } else {
         (*map_info).size = st.st_size as (usize);
-        'loop4: loop {
+        loop {
             (*map_info).buffer = mmap(
-                0i32 as (*mut ::std::os::raw::c_void),
+                ::std::ptr::null_mut(),
                 st.st_size as (usize),
                 0x1i32,
                 0x2i32 | 0x8000i32,
@@ -403,7 +403,7 @@ unsafe fn mp3dec_close_file(map_info: *mut Mp3decMapInfo) {
             (*map_info).size,
         );
     }
-    (*map_info).buffer = 0i32 as (*const u8);
+    (*map_info).buffer = ::std::ptr::null();
     (*map_info).size = 0usize;
 }
 
@@ -527,7 +527,7 @@ fn main() {
         // Meh, allocation junk could be better
         let buf = &mut Vec::with_capacity(1152);
         buf.resize(1152, 0);
-        let samples = mp3dec_decode_frame(mp3d, &mut input_buf[data_start..], buf, frame_info);
+        let samples = mp3dec_decode_frame(mp3d, &input_buf[data_start..], buf, frame_info);
         output_buf.extend_from_slice(buf);
         total_samples += samples;
         total_frames += 1;
@@ -670,20 +670,16 @@ fn main() {
 unsafe fn preload(file: *mut IoFile, data_size: *mut i32) -> *mut u8 {
     let data: *mut u8;
     *data_size = 0i32;
-    if file.is_null() {
-        0i32 as (*mut u8)
-    } else if fseek(file, 0isize, 2i32) != 0 {
-        0i32 as (*mut u8)
+    if file.is_null() || fseek(file, 0isize, 2i32) != 0 {
+        ::std::ptr::null_mut()
     } else {
         *data_size = ftell(file) as (i32);
-        (if *data_size < 0i32 {
-            0i32 as (*mut u8)
-        } else if fseek(file, 0isize, 0i32) != 0 {
-            0i32 as (*mut u8)
+        (if *data_size < 0i32 || fseek(file, 0isize, 0i32) != 0 {
+            ::std::ptr::null_mut()
         } else {
             data = malloc(*data_size as (usize)) as (*mut u8);
             (if data.is_null() {
-                0i32 as (*mut u8)
+                ::std::ptr::null_mut()
             } else {
                 if fread(
                     data as (*mut ::std::os::raw::c_void),
@@ -704,8 +700,8 @@ unsafe fn preload(file: *mut IoFile, data_size: *mut i32) -> *mut u8 {
 unsafe fn wav_header(hz: i32, ch: i32, bips: i32, data_bytes: i32) -> Vec<u8> {
     let hdr: &mut Vec<u8> =
         &mut Vec::from(&b"RIFFsizeWAVEfmt \x10\0\0\0\x01\0ch_hz_abpsbabsdatasize\0"[..]);
-    let avg_bytes_per_sec: usize = (bips * ch * hz >> 3i32) as (usize);
-    let block_align: u32 = (bips * ch >> 3i32) as (u32);
+    let avg_bytes_per_sec: usize = ((bips * ch * hz) >> 3i32) as (usize);
+    let block_align: u32 = ((bips * ch) >> 3i32) as (u32);
     *(hdr.as_mut_ptr().offset(0x4isize) as (*mut ::std::os::raw::c_void) as (*mut i32)) =
         44i32 + data_bytes - 8i32;
     *(hdr.as_mut_ptr().offset(0x14isize) as (*mut ::std::os::raw::c_void) as (*mut i16)) = 1i16;
@@ -725,7 +721,7 @@ unsafe fn wav_header(hz: i32, ch: i32, bips: i32, data_bytes: i32) -> Vec<u8> {
 
 unsafe fn read16le(p: *const ::std::os::raw::c_void) -> i16 {
     let src: *const u8 = p as (*const u8);
-    (*src.offset(0isize) as (i32) << 0i32 | *src.offset(1isize) as (i32) << 8i32) as (i16)
+    (i32::from(*src.offset(0isize)) | i32::from(*src.offset(1isize)) << 8i32) as (i16)
 }
 
 unsafe fn decode_file(
@@ -756,7 +752,7 @@ unsafe fn decode_file(
         input_file_name,
         &mut info as (*mut Mp3decFileInfo),
         callback,
-        0i32 as (*mut ::std::os::raw::c_void),
+        ::std::ptr::null_mut(),
     ) != 0
     {
         printf((*b"error: file not found or read error\0").as_ptr());
@@ -780,22 +776,22 @@ unsafe fn decode_file(
                 (ref_size as (usize)).wrapping_div(2usize)
             }) as (i32);
             i = 0i32;
-            'loop7: loop {
-                if !(i < max_samples) {
+            loop {
+                if i >= max_samples {
                     break;
                 }
-                let mse_temp: i32 = abs(*buffer.offset(i as (isize)) as (i32)
-                    - read16le(
-                        &*buf_ref
-                            .offset((i as (usize)).wrapping_mul(::std::mem::size_of::<i16>())
-                                as (isize)) as (*const u8)
+                let mse_temp: i32 = abs(i32::from(*buffer.offset(i as (isize))) - i32::from(
+                    read16le(
+                        &*buf_ref.add((i as (usize)).wrapping_mul(::std::mem::size_of::<i16>()))
+                            as (*const u8)
                             as (*const ::std::os::raw::c_void),
-                    ) as (i32));
+                    ),
+                ));
                 if mse_temp > maxdiff {
                     maxdiff = mse_temp;
                 }
-                mse = mse + (mse_temp as (f32) * mse_temp as (f32)) as (f64);
-                i = i + 1;
+                mse += f64::from(mse_temp as (f32) * mse_temp as (f32));
+                i += 1;
             }
         }
         if !file_out.is_null() {
@@ -808,15 +804,15 @@ unsafe fn decode_file(
         }
         free(buffer as (*mut ::std::os::raw::c_void));
     }
-    mse = mse / if total_samples != 0 {
+    mse /= f64::from(if total_samples != 0 {
         total_samples
     } else {
         1i32
-    } as (f64);
-    if 0i32 as (f64) == mse {
+    });
+    if (f64::from(0i32) - mse).abs() < ::std::f64::EPSILON {
         psnr = 99.0f64;
     } else {
-        psnr = 10.0f64 * (0x7fffi32 as (f64) * 0x7fffi32 as (f64) / mse);
+        psnr = 10.0f64 * (f64::from(0x7fffi32) * f64::from(0x7fffi32) / mse);
     }
     printf(
         (*b"rate=%d samples=%d max_diff=%d PSNR=%f\n\0").as_ptr(),
@@ -825,7 +821,7 @@ unsafe fn decode_file(
         maxdiff,
         psnr,
     );
-    if psnr < 96i32 as (f64) {
+    if psnr < f64::from(96i32) {
         printf((*b"PSNR compliance failed\n\0").as_ptr());
         exit(1i32);
     }
@@ -848,17 +844,17 @@ pub unsafe fn _c_main(argc: i32, argv: *mut *mut u8) -> i32 {
     let ref_file_name: *mut u8 = if argc > 2i32 {
         *argv.offset(2isize)
     } else {
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut u8)
+        ::std::ptr::null_mut() as (*mut u8)
     };
     let output_file_name: *mut u8 = if argc > 3i32 {
         *argv.offset(3isize)
     } else {
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut u8)
+        ::std::ptr::null_mut() as (*mut u8)
     };
-    let mut file_out: *mut IoFile = 0i32 as (*mut ::std::os::raw::c_void) as (*mut IoFile);
+    let mut file_out: *mut IoFile = ::std::ptr::null_mut() as (*mut IoFile);
     if !output_file_name.is_null() {
         file_out = fopen(output_file_name as (*const u8), (*b"wb\0").as_ptr());
-        let ext: *mut u8 = strrchr(output_file_name as (*const u8), b'.' as (i32));
+        let ext: *mut u8 = strrchr(output_file_name as (*const u8), i32::from(b'.'));
         if !ext.is_null()
             && (strcasecmp(ext.offset(1isize) as (*const u8), (*b"wav\0").as_ptr()) == 0)
         {
@@ -868,7 +864,7 @@ pub unsafe fn _c_main(argc: i32, argv: *mut *mut u8) -> i32 {
     let file_ref: *mut IoFile = if !ref_file_name.is_null() {
         fopen(ref_file_name as (*const u8), (*b"rb\0").as_ptr())
     } else {
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut IoFile)
+        ::std::ptr::null_mut() as (*mut IoFile)
     };
     let buf_ref: *mut u8 = preload(file_ref, &mut ref_size as (*mut i32));
     if !file_ref.is_null() {
@@ -877,7 +873,7 @@ pub unsafe fn _c_main(argc: i32, argv: *mut *mut u8) -> i32 {
     let input_file_name: *mut u8 = if argc > 1i32 {
         *argv.offset(1isize)
     } else {
-        0i32 as (*mut ::std::os::raw::c_void) as (*mut u8)
+        ::std::ptr::null_mut() as (*mut u8)
     };
     if input_file_name.is_null() {
         printf((*b"error: no file names given\n\0").as_ptr());

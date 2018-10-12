@@ -18,6 +18,8 @@ maintenance = { status = "experimental" }
 [dependencies]
 structopt = "0.2"
 byteorder = "1.2.6"
+arrayvec = "0.4.7"
+num-traits = "0.2.6"
 
 [dev-dependencies]
 minimp3 = "0.3"
